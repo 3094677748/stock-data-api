@@ -1,11 +1,15 @@
 {
-  "name": "stock-data-api",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "build": "echo 'Python backend, no Node.js build required.'"
-  },
-  "engines": {
-    "node": ">=18"
-  }
+  "version": 2,
+  "builds": [
+    {
+      "src": "web_api.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "web_api.py"
+    }
+  ]
 }
