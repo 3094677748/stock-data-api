@@ -2,13 +2,18 @@
   "version": 2,
   "builds": [
     {
+<<<<<<< HEAD
       "src": "index.py",
+=======
+      "src": "web_api.py",
+>>>>>>> 871a95474a32aa5bf1b8ae7e89af03f09f001720
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
+<<<<<<< HEAD
       "dest": "/index.py"
     }
   ],
@@ -21,3 +26,9 @@
     "PYTHONPATH": "."
   }
 }
+=======
+      "dest": "web_api.py"
+    }
+  ]
+}
+>>>>>>> 871a95474a32aa5bf1b8ae7e89af03f09f001720
