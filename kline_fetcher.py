@@ -1,7 +1,8 @@
-# kline_fetcher.py - 获取K线数据
-import akshare as ak
+# kline_fetcher.py - 获取K线数据（兼容Vercel部署）
 import pandas as pd
 from datetime import datetime, timedelta
+import random
+import yfinance as yf
 
 
 class KlineFetcher:
@@ -28,12 +29,12 @@ class KlineFetcher:
         stock_code = self.code_converter.name_to_code(stock_name)
         if not stock_code:
             print(f"错误：未找到股票 {stock_name}")
-            return None
+            return self._get_mock_data(stock_name, days)
 
         print(f"正在获取 {stock_name}({stock_code}) 的K线数据...")
 
         try:
-            # 2. 根据股票类型选择不同的API
+            # 2. 根据股票类型获取数据
             if stock_code.isdigit() and len(stock_code) == 6:
                 # A股
                 return self._get_a_stock(stock_code, days)
@@ -48,80 +49,46 @@ class KlineFetcher:
             return self._get_mock_data(stock_name, days)  # 返回模拟数据
 
     def _get_a_stock(self, stock_code, days):
-        """获取A股数据"""
-        # 计算日期
-        end_date = datetime.now().strftime('%Y%m%d')
-        start_date = (datetime.now() - timedelta(days=days * 2)).strftime('%Y%m%d')
+        """获取A股数据（使用yfinance）"""
+        # A股在yfinance中的代码格式：代码.SS（上证）或代码.SZ（深证）
+        if stock_code.startswith('6'):
+            ticker_symbol = f"{stock_code}.SS"  # 上证
+        else:
+            ticker_symbol = f"{stock_code}.SZ"  # 深证
 
-        # 使用AKShare获取数据
-        df = ak.stock_zh_a_hist(
-            symbol=stock_code,
-            period="daily",
-            start_date=start_date,
-            end_date=end_date,
-            adjust="qfq"
-        )
-
-        # 重命名列
-        df = df.rename(columns={
-            '日期': 'date',
-            '开盘': 'open',
-            '最高': 'high',
-            '最低': 'low',
-            '收盘': 'close',
-            '成交量': 'volume'
-        })
-
-        # 选择需要的列
-        df = df[['date', 'open', 'high', 'low', 'close', 'volume']]
-
-        # 排序并取最近的days天
-        df = df.sort_values('date')
-        if len(df) > days:
-            df = df.tail(days)
-
-        print(f"成功获取 {len(df)} 条A股数据")
-        return df
+        return self._get_yfinance_data(ticker_symbol, days, "A股")
 
     def _get_hk_stock(self, stock_code, days):
-        """获取港股数据"""
-        end_date = datetime.now().strftime('%Y%m%d')
-        start_date = (datetime.now() - timedelta(days=days * 2)).strftime('%Y%m%d')
-
-        df = ak.stock_hk_hist(
-            symbol=stock_code,
-            period="daily",
-            start_date=start_date,
-            end_date=end_date,
-            adjust="qfq"
-        )
-
-        df = df.rename(columns={
-            '日期': 'date',
-            '开盘': 'open',
-            '最高': 'high',
-            '最低': 'low',
-            '收盘': 'close',
-            '成交量': 'volume'
-        })
-
-        df = df[['date', 'open', 'high', 'low', 'close', 'volume']]
-        df = df.sort_values('date')
-
-        if len(df) > days:
-            df = df.tail(days)
-
-        print(f"成功获取 {len(df)} 条港股数据")
-        return df
+        """获取港股数据（使用yfinance）"""
+        # 港股在yfinance中的代码格式：代码.HK
+        ticker_symbol = f"{stock_code}.HK"
+        return self._get_yfinance_data(ticker_symbol, days, "港股")
 
     def _get_other_stock(self, stock_code, days):
-        """获取其他股票数据（这里使用yfinance）"""
+        """获取其他股票数据（使用yfinance）"""
+        return self._get_yfinance_data(stock_code, days, "美股")
+
+    def _get_yfinance_data(self, ticker_symbol, days, market_type):
+        """使用yfinance获取数据"""
         try:
-            import yfinance as yf
-            ticker = yf.Ticker(stock_code)
-            df = ticker.history(period=f"{days}d")
+            print(f"使用yfinance获取{market_type}数据，代码: {ticker_symbol}")
+
+            ticker = yf.Ticker(ticker_symbol)
+
+            # 计算日期范围
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days * 2)  # 多获取一些数据
+
+            # 获取历史数据
+            df = ticker.history(start=start_date, end=end_date)
+
+            if df.empty:
+                raise ValueError(f"未获取到 {ticker_symbol} 的数据")
+
+            # 重置索引，将Date变为列
             df = df.reset_index()
 
+            # 重命名列
             df = df.rename(columns={
                 'Date': 'date',
                 'Open': 'open',
@@ -131,12 +98,23 @@ class KlineFetcher:
                 'Volume': 'volume'
             })
 
+            # 选择需要的列
             df = df[['date', 'open', 'high', 'low', 'close', 'volume']]
-            print(f"成功获取 {len(df)} 条美股数据")
+
+            # 转换日期格式
+            df['date'] = df['date'].dt.strftime('%Y-%m-%d')
+
+            # 排序并取最近的days天
+            df = df.sort_values('date')
+            if len(df) > days:
+                df = df.tail(days)
+
+            print(f"成功获取 {len(df)} 条{market_type}数据")
             return df
-        except:
-            # 如果yfinance失败，返回模拟数据
-            return self._get_mock_data(stock_code, days)
+
+        except Exception as e:
+            print(f"yfinance获取{market_type}数据失败: {e}")
+            raise
 
     def _get_mock_data(self, stock_name, days):
         """获取模拟数据（当真实API失败时使用）"""
@@ -158,6 +136,12 @@ class KlineFetcher:
             close_price = open_price + random.uniform(-5, 5)
             high_price = max(open_price, close_price) + random.uniform(0, 3)
             low_price = min(open_price, close_price) - random.uniform(0, 3)
+
+            # 确保价格为正数
+            open_price = max(0.01, open_price)
+            close_price = max(0.01, close_price)
+            high_price = max(0.01, high_price)
+            low_price = max(0.01, low_price)
 
             data.append({
                 'date': date.strftime('%Y-%m-%d'),

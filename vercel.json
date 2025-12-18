@@ -1,11 +1,23 @@
 {
-  "name": "stock-data-api",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "build": "echo 'Python backend, no Node.js build required.'"
+  "version": 2,
+  "builds": [
+    {
+      "src": "index.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.py"
+    }
+  ],
+  "functions": {
+    "index.py": {
+      "maxDuration": 10
+    }
   },
-  "engines": {
-    "node": ">=18"
+  "env": {
+    "PYTHONPATH": "."
   }
 }
