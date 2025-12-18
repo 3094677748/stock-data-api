@@ -1,28 +1,11 @@
 {
-  "functions": {
-    "api/index.py": {
-      "runtime": "python3.9"
-    }
+  "name": "stock-data-api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "echo 'Python backend, no Node.js build required.'"
   },
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/api/index"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        },
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET,POST,OPTIONS"
-        }
-      ]
-    }
-  ]
+  "engines": {
+    "node": ">=18"
+  }
 }
